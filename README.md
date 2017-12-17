@@ -7,22 +7,30 @@ Any contributions are welcome :)
 
 # Requirements
 
+Tested on Ubuntu 14.04
+
 ```
 # OpenCV Contrib
 pip install opencv-contrib-python
 ```
 
+FLANN-1.9.1 (https://github.com/mariusmuja/flann/releases/tag/1.9.1)
+
 # Step by Step TODO
 
 ## Data preparation 
-Oxford 5k
+[Oxford 5k](http://www.robots.ox.ac.uk/~vgg/data/oxbuildings/)
 
 ## Feature Generation
 Image Feature Generator
 Image Feature Descriptor
 
 ## Visual Words Generation
-Generate Visual Words: Vector quantization with k-means and approximate nearest neighbor search
+Generate Visual Words: Vector quantization with several methods
+* flat k-means clustering: simple, but failed to scale
+* approximate k-menas 
+    * For nearest negihbor finding, we use randomized kd tree forest. We use FLANN(https://github.com/mariusmuja/flann) implementation
+     
 
 ## Search Engine
 Approximage nearest neighbor
