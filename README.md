@@ -12,9 +12,28 @@ Tested on Ubuntu 14.04
 ```
 # OpenCV Contrib
 pip install opencv-contrib-python
+
+# Datasketch for minHash
+pip install datasketch -U
 ```
 
-FLANN-1.9.1 (https://github.com/mariusmuja/flann/releases/tag/1.9.1)
+## Flann and python binding (pyflann)
+
+Download https://github.com/mariusmuja/flann/releases/tag/1.9.1 for python binding. 
+build with cmake
+```
+# goto ./lib/flann-1.8.4
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+# Make sure it builds python binding. 
+python
+>>> import pyflann
+>>> # shows no error
+```
+
 
 # Step by Step TODO
 
@@ -30,7 +49,8 @@ Generate Visual Words: Vector quantization with several methods
 * flat k-means clustering: simple, but failed to scale
 * approximate k-menas 
     * For nearest negihbor finding, we use randomized kd tree forest. We use FLANN(https://github.com/mariusmuja/flann) implementation
-     
+
+[ ] Enable CUDA support for FLANN during FLANN compilation. 
 
 ## Search Engine
 Approximage nearest neighbor
