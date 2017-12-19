@@ -17,15 +17,26 @@ pip install opencv-contrib-python
 pip install datasketch -U
 ```
 
-## Flann and python binding (pyflann)
+## FLANN and python binding (pyflann)
 
 Download https://github.com/mariusmuja/flann/releases/tag/1.9.1 for python binding. 
 build with cmake
 ```
+# Install required packages 
+sudo apt-get install libhdf5-dev libgtest-dev
+
+# Finish google test install following https://www.eriksmistad.no/getting-started-with-google-test-on-ubuntu/
+cd /usr/src/gtest
+sudo cmake CMakeLists.txt
+sudo make
+ 
+# copy or symlink libgtest.a and libgtest_main.a to your /usr/lib folder
+sudo cp *.a /usr/lib
+
 # goto ./lib/flann-1.8.4
 mkdir build
 cd build
-cmake ..
+cmake -DBUILD_CUDA_LIB=ON ..
 make
 sudo make install
 # Make sure it builds python binding. 
@@ -33,6 +44,10 @@ python
 >>> import pyflann
 >>> # shows no error
 ```
+
+## [PQk-means](https://github.com/DwangoMediaVillage/pqkmeans)
+
+
 
 
 # Step by Step TODO

@@ -17,14 +17,14 @@ def _matrix_closest_centroid(points, centroids):
 def _naive_assignment(data_points, center_points):
     num_point, dim = data_points.shape # 128 for SIFT descriptor
     k, _ = center_points.shape
-    associated_center_index = np.ones((num_point,), dtype=np.uint8) * -1
+    associated_center_index = np.ones((num_point,), dtype=np.int32) * -1
     
     def get_distance(vector1, vector2):
         return np.linalg.norm(vector1-vector2)
     
     for i in tqdm(range(num_point)):
         min_index = -1
-        min_val = np.iinfo(np.uint32).max
+        min_val = np.iinfo(np.int64).max
         for j in range(k):
             dist = get_distance(data_points[i, :], center_points[j, :])
             if min_val > dist:
@@ -43,17 +43,16 @@ def _approximate_assignment(data_points, center_points):
     It change O(NK) to O(N log(K)). 
     See [Object retrieval with large vocabularies and fast spatial matching] paper, Section 3.1. 
     """
-    # cy = cyflann.FLANNIndex(algorithm='kdtree_single')
-    flann = pyflann.FLANN(algorithm='kdtree') # use default setting, not specifying number of trees. 
-    # print('flann:', flann.__flann_parameters)
+    flann = pyflann.FLANN(algorithm='kdtree', trees=8)
+    # flann = pyflann.FLANN(algorithm='kdtree_single')
     params = flann.build_index(center_points)
-    print("flann params:", params)
+    # print("flann params:", params)
 
     ids, dists = flann.nn_index(data_points) # By default, only the most nearest point (centroid)
     
     return ids
 
-def run_kmeans_clustering(data_points, k=2**17, init_center_points=None, knn_method="naive"):
+def run_kmeans_clustering(data_points, k=2**17, max_iter=None, init_center_points=None, knn_method="naive"):
     """
     Args:
         data_points: 2d numpy array with shape of (num_point, dim)
@@ -67,15 +66,18 @@ def run_kmeans_clustering(data_points, k=2**17, init_center_points=None, knn_met
     if init_center_points is None:
         max_val = 2**8-1 # 255. uint8 max. for SIFT descriptor
         print('max_val:', max_val)
-        center_points = np.random.randint(max_val, size=(k, dim)) 
+        center_points = np.random.randint(max_val, size=(k, dim), dtype=np.uint8)         
     else:
         center_points = init_center_points
+    # center_points = center_points.astype(float)
     # print('init center points:', center_points)
         
     
     prev_val = np.ones((num_point,), dtype=np.uint8) * -1
     step = 0
     while True:
+        if max_iter is not None and step == max_iter:
+            break
         print('k-means clustering. start step:{}'.format(step))
         
         # Assignment Step        
@@ -88,7 +90,6 @@ def run_kmeans_clustering(data_points, k=2**17, init_center_points=None, knn_met
             raise Exception("no valid knn method")
 
         # print('index:', associated_center_index)
-        # print('index type:', type(associated_center_index))
         # print('center points:', center_points)
         num_same_centroid = np.sum(np.equal(prev_val, associated_center_index))
         print("num_same_centroid:", num_same_centroid)
@@ -98,24 +99,37 @@ def run_kmeans_clustering(data_points, k=2**17, init_center_points=None, knn_met
         
         prev_val = associated_center_index
 
-        # Update Step        
-        associated_center_count = [0] * k
-        associated_center_sum = np.zeros((k, dim), dtype=np.uint32)
-        # Improvement idea. change loop to matrix multiplication. select operator. 
-        for i in range(num_point):                
-            assigned_index = associated_center_index[i]
-            associated_center_sum[assigned_index, :] = associated_center_sum[assigned_index, :] + data_points[i, :]
-            associated_center_count[assigned_index] = associated_center_count[assigned_index] + 1
+        # Update Step         
+        # print('associated_center_index:', associated_center_index)
+        for center_idx in range(k):
+            assigned_points = data_points[associated_center_index == center_idx]
+            if assigned_points.shape[0] == 0:
+                # print('no center')
+                continue # do not update when no points are assigned to this cluster center
+            # print('center_idx:', center_idx)
+            # print('assigned_points:', assigned_points)
+            assigned_points = assigned_points.astype(float)
+            center_points[center_idx, :] = assigned_points.mean(axis = 0)
+            # print(center_points[center_idx, :])
+       
+        # associated_center_count = [0] * k
+        # associated_center_sum = np.zeros((k, dim), dtype=np.uint32)
+        # # Improvement idea. change loop to matrix multiplication. select operator. 
+        # for i in range(num_point):                
+        #     assigned_index = associated_center_index[i]
+        #     associated_center_sum[assigned_index, :] = associated_center_sum[assigned_index, :] + data_points[i, :]
+        #     associated_center_count[assigned_index] = associated_center_count[assigned_index] + 1
             
-        # print('sum:', associated_center_sum)
-        # print('count:', associated_center_count)
+        # # print('sum:', associated_center_sum)
+        # # print('count:', associated_center_count)
             
-        for j in range(k):
-            if associated_center_count[j] == 0:
-                continue
-            else:
-                center_points[j, :] = associated_center_sum[j, :] / associated_center_count[j]
+        # for j in range(k):
+        #     if associated_center_count[j] == 0:
+        #         continue
+        #     else:
+        #         center_points[j, :] = associated_center_sum[j, :] / associated_center_count[j]
 
         gc.collect()
 
         step += 1
+    return center_points
