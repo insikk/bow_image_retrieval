@@ -1,5 +1,4 @@
 import numpy as np
-import pyflann
 from tqdm import tqdm
 import gc
 
@@ -43,6 +42,7 @@ def _approximate_assignment(data_points, center_points):
     It change O(NK) to O(N log(K)). 
     See [Object retrieval with large vocabularies and fast spatial matching] paper, Section 3.1. 
     """
+    import pyflann
     flann = pyflann.FLANN(algorithm='kdtree', trees=8)
     # flann = pyflann.FLANN(algorithm='kdtree_single')
     params = flann.build_index(center_points)
