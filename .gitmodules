@@ -1,0 +1,3 @@
+[submodule "datasketch"]
+	path = datasketch
+	url = https://github.com/insikk/datasketch.git
