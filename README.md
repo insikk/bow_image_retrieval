@@ -17,6 +17,16 @@ pip install opencv-contrib-python
 pip install datasketch -U
 ```
 
+## Modified Datasketch for minHash
+ 
+ You need modified version of datasketch package. https://github.com/insikk/datasketch/tree/update_with_int
+ You can simply install from submodule added in this directory. 
+ ```
+ git clone --recursive <this repo>
+ cd datasketch
+ pip install -e .
+ ```
+
 ## FLANN and python binding (pyflann)
 
 Download https://github.com/mariusmuja/flann/releases/tag/1.9.1 for python binding. 

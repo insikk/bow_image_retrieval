@@ -2,6 +2,8 @@ from datasketch import MinHash
 import random
 import copy
 import numpy as np
+import itertools
+from tqdm import tqdm
 
 class SketchCollisionTester():    
     def __init__(self, minHash_param_k = 512):
@@ -153,8 +155,7 @@ class VisualMinHashWithLookupTable:
             target_set: index of vocabulary. 
         """
         hashval_matters = self.hash_funcs[:, target_set]
-        # print('shape of hashval_matters:', hashval_matters.shape)
-        
+        # print('shape of hashval_matters:', hashval_matters.shape)        
         hashval = hashval_matters.min(axis=1)
         # print('hashval shape:', hashval.shape)
         # print('hashval:', hashval)
@@ -166,3 +167,41 @@ class VisualMinHashWithLookupTable:
             # print('sketch:', sketch)
             result.append(tuple(sketch))
         return result
+
+
+def get_collision_pairs(bow_dict, hashHelper, collisionHelper):
+    """
+    From BoW, hash each document with hashHelper. 
+    Find collision with collisionHelper. 
+    Return collision pairs with its set similarity. 
+    """
+    keys = bow_dict.keys()
+    count = 0
+    for image_name in tqdm(keys):
+        # print('bag-of-visual-words:', bow_dict[image_name])
+        set_of_visual_words = bow_dict[image_name]
+        # print('hashing...')
+        hashval = hashHelper.hash_bow(set_of_visual_words)    
+        
+        # print('collision testing...')
+        # print('hashval with sketches:', hashval)
+        is_collide = collisionHelper.hash_sketches(hashval, image_name)
+        # if is_collide:
+        #     print(image_name)    
+        count = count + 1
+        # if count % 20 == 0:
+        #     gc.collect()
+        
+    collisions = collisionHelper.get_collisions()
+    similar_pairs = set()
+    for collision in collisions:
+        for pair in itertools.combinations(collision, 2):
+            pair = tuple(sorted(list(pair)))
+            a1 = set(bow_dict[pair[0]])
+            a2 = set(bow_dict[pair[1]])
+            u=len(a1.union(a2))
+            i=len(a1.intersection(a2))
+            set_sim = float(i) / u
+            similar_pairs.add((pair, set_sim))               
+    
+    return list(similar_pairs)
