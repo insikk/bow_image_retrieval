@@ -12,6 +12,9 @@ Tested on Ubuntu 14.04
 ```
 # OpenCV Contrib
 pip install opencv-contrib-python
+           
+# Scikit for RANSAC
+pip install scikit-image
 
 # Datasketch for minHash
 pip install datasketch -U
@@ -26,6 +29,14 @@ pip install datasketch -U
  cd datasketch
  pip install -e .
  ```
+
+## Modified pqkmeans
+
+```
+cd pqkmeans
+git submodule update --init --recursive # get pybind 
+pip install -e .
+```
 
 ## FLANN and python binding (pyflann)
 

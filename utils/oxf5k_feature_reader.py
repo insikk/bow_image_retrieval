@@ -8,6 +8,7 @@ def feature_reader(feature_bin_path="./data/feature/feat_oxc1_hesaff_sift.bin"):
     """
         
     features = []    
+    print("read features from {}".format(feature_bin_path))
     # Read feature from bin file, and make tuple format. 
     with open(feature_bin_path, "rb") as f:
         # Read 128 byte        

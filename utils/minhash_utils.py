@@ -1,4 +1,3 @@
-from datasketch import MinHash
 import random
 import copy
 import numpy as np
@@ -63,6 +62,7 @@ class VisualMinHashWithDataSketch:
         # We could use minHash function as permutation of vocabulary. 
         # However, it is memory inefficient. As an alternative, we can use hash function and take min value among the existing members. 
         # TODO: This alternative may not work. Check this out. 
+        from datasketch import MinHash
         
         # In paper, sec 4.1, it says they use 512 independent hash function and grouped 512 sketches by usning hash function multiple times. 
         # I think this is not valid implementation, because sketches are not indenpendent anymore. 
