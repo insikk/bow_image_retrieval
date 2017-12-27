@@ -19,59 +19,38 @@ Afterward, you may use image retrieval system to complete the connected componen
 
 Author: Insik Kim (insik92@gmail.com)
 """
-
+import argparse
 import os
 import pickle
-from utils.bow_utils import get_idf_word_weights
 
+import sys
+sys.path.insert(0,'..')
+
+from utils.bow_utils import get_idf_word_weights
 # from utils.minhash_utils import VisualMinHashWithDataSketch
 from utils.minhash_utils import SketchCollisionTester, VisualMinHashWithLookupTable
 from utils.minhash_utils import get_collision_pairs
-
+from utils.geo_verif_utils import get_ransac_inlier, draw_ransac
 
 from multiprocessing import Pool
-from utils.geo_verif_utils import get_ransac_inlier, draw_ransac
+
 import cv2
 from tqdm import tqdm
 import numpy as np
-import pickle
 
 import random
 
 
-def show_image_cluster(image_dir, image_names):
-    """
-    show image cluster for oxford 5k dataset
-    """
-    # Visualize images assigned to this cluster    
-    from PIL import Image
-    import matplotlib.pyplot as plt
-    
-    imgs = []    
-    for image_name in image_names:
-        image_name = image_name.replace("oxc1_", "") + ".jpg"
-        image_path = os.path.join(image_dir, image_name)
-        img = Image.open(image_path)
-        imgs.append(img)            
-        
-    cols = 5
-    imgs = imgs[:cols]
-    plt.figure(figsize=(20, 5))
-    for i, img in enumerate(imgs):
-        plt.subplot(1, cols, i + 1)
-        plt.imshow(img)
-    plt.show()
-
 def get_keypoints(image_name):
-    # Oxford 5k dataset provides already converted visual words. We could use this one    
+    # Oxford 5k dataset provides already converted visual words. We could use this one
     oxf5k_visualword_dir = './data/word_oxc1_hesaff_sift_16M_1M'
     filepath = os.path.join(oxf5k_visualword_dir, image_name + ".txt")
     kp = []
     with open(filepath) as f:
-        lines = list(map(lambda x: x.strip(), f.readlines()[2:])) # ignore first two lines        
+        lines = list(map(lambda x: x.strip(), f.readlines()[2:])) # ignore first two lines
         for l in lines:
             val = l.split(" ")
-            visual_word_index = int(val[0])-1 # This data use 1 to 1,000,000. convert to zero-based so 0 to 999,999  
+            visual_word_index = int(val[0])-1 # This data use 1 to 1,000,000. convert to zero-based so 0 to 999,999
             x = float(val[1])
             y = float(val[2])
             a = float(val[3])
@@ -84,13 +63,15 @@ def get_keypoints(image_name):
             key_point = cv2.KeyPoint(x, y, 1)
             kp.append(key_point)
     return kp
-    
 
 def print_similar_paris_statistics(similar_pairs, th_sim_min, th_sim_max):
+    import pprint
     similar_pairs = list(similar_pairs)
+    print("----------SIMILAR PAIRS STATISTICS------------")
     print('len similar_pairs:', len(similar_pairs))
     similar_pairs.sort(key=lambda x: x[1])
-    print('similar_pairs[:5]:', similar_pairs[:5])
+    print('similar_pairs[:5]:')
+    pprint.pprint(similar_pairs[:5])
 
     count_irr = 0
     count_sim = 0
@@ -104,16 +85,52 @@ def print_similar_paris_statistics(similar_pairs, th_sim_min, th_sim_max):
         else:
             count_dup += 1
     print("count (irr, sim, dup) : ({}, {}, {})".format(count_irr, count_sim, count_dup))
-    
+    print()
 
-    
-def show_image_pair_ransac(image_dir, image_names, kp1, kp2, des1, des2):
+
+def print_ransac_result_statistics(ransac_result):
+    import pprint
+    print("----------RANSAC RESULT STATISTICS------------")
+    print('len ransac_result:', len(ransac_result))
+    ransac_result.sort(key=lambda x: x[2], reverse=True)
+    print('ransac_result[:5]:')
+    pprint.pprint(ransac_result[:5])
+    print()
+
+def show_image_cluster(config, image_names):
     """
     show image cluster for oxford 5k dataset
     """
-    # Visualize images assigned to this cluster    
+    # Visualize images assigned to this cluster
     from PIL import Image
     import matplotlib.pyplot as plt
+    image_dir = config["image_dir"]
+    imgs = []
+    for image_name in image_names:
+        image_name = image_name.replace("oxc1_", "") + ".jpg"
+        image_path = os.path.join(image_dir, image_name)
+        img = Image.open(image_path)
+        imgs.append(img)
+    cols = 5
+    imgs = imgs[:cols]
+    plt.figure(figsize=(20, 5))
+    for i, img in enumerate(imgs):
+        plt.subplot(1, cols, i + 1)
+        plt.imshow(img)
+    plt.show()
+
+def show_image_pair_ransac(config, image_names):
+    """
+    show image cluster for oxford 5k dataset
+    """
+    # Visualize images assigned to this cluster
+    from PIL import Image
+    import matplotlib.pyplot as plt
+
+    with open(config["image_descriptor_dict_path"], 'rb') as f:
+        # key: image_name, value: 2d numpy array of shape (num_descriptor, dim_descriptor)
+        image_descriptor_dict = pickle.load(f)
+    image_dir = config["image_dir"]
 
     imgs = []
     for image_name in image_names:
@@ -121,6 +138,11 @@ def show_image_pair_ransac(image_dir, image_names, kp1, kp2, des1, des2):
         image_path = os.path.join(image_dir, image_name)
         img = cv2.imread(image_path)
         imgs.append(img)
+
+    kp1 = get_keypoints(image_names[0])
+    des1 = np.array(image_descriptor_dict[image_names[0]], dtype=np.uint8)
+    kp2 = get_keypoints(image_names[1])
+    des2 = np.array(image_descriptor_dict[image_names[1]], dtype=np.uint8)
 
     return draw_ransac(imgs[0], imgs[1], kp1, kp2, des1, des2, False, 'BRUTE_FORCE', None)
 
@@ -132,7 +154,6 @@ def parallel_task(val):
     kp2 = get_keypoints(image_cluster[1])
     des2 = np.array(image_descriptor_dict[image_cluster[1]], dtype=np.uint8)
     num_inlier = get_ransac_inlier(kp1, kp2, des1, des2)
-    # num_inlier = show_image_pair_ransac(IMAGE_DIR, image_cluster, kp1, kp2, des1, des2)
     return (image_cluster, score, num_inlier)
 
 def filter_keep_similar_only(score, min_th, max_th):
@@ -157,74 +178,76 @@ def similarity_estimation(bow_dict, vocab_size):
 
     # Timing: 5062 images took 2 min 30 sec.
     # History:
-    # Oxf5k, 16M features, 1M cluster(visual_words), count (irr, sim, dup) : ???
+    # Oxf5k, 16M features, 1M cluster(visual_words), count (irr, sim, dup) : (194, 150, 4)
     # Oxf5k, 16M features, codebook train size 100k with 4 subspaces, 2^17 cluster(visual_words), count (irr, sim, dup) : (15348, 1141, 2)
     # Oxf5k, 16M features, codebook train size 1M with 4 subspaces, 2^17 cluster(visual_words), count (irr, sim, dup) : (15587, 1155, 2)
     # Oxf5k, 16M features, codebook train size 1M with 8 subspaces, 2^17 cluster(visual_words), count (irr, sim, dup) : (12775, 724, 2)
     return similar_pairs
-def main(args=None):
-    # TODO: read configuration from args or configuration file.
 
-    num_processes = 2
+class Config:
+    pass
+def read_config(config_path):
+    """
+    From configuration json file, read config and return the object.
+    """
+    import yaml
+    import pprint
+    with open(config_path, "r") as f:
+        config = yaml.load(f)
 
-    bow_dict_save_path = 'bow_dict_word_oxc1_hesaff_sift_16M_1M_pretrained.pkl'
-    vocab_size=1000000
+    config.update(config["general"])
+    config.pop("general")
+    config.update(config["mhic_config"])
+    config.pop("mhic_config")
 
-    # bow_dict_save_path = 'bow_dict_word_oxc1_hesaff_sift_16M_100k_handmade.pkl'
-    # vocab_size = 2**17
+    pprint.pprint(config)
 
-    # bow_dict_save_path = 'bow_dict_word_oxc1_hesaff_sift_16M_1M_4_sub_handmade.pkl'
-    # vocab_size = 2**17
+    return config
 
-    # bow_dict_save_path = 'bow_dict_word_oxc1_hesaff_sift_16M_1M_8_sub_handmade.pkl'
-    # vocab_size = 2**17
-
-    # For datamining purpose, we want to get less simlar but the same scene.
-    # So we are interested in similiarity in [THRESHOLD_DATAMINING_SIMILARITY_MIN, THRESHOLD_DATAMINING_SIMILARITY_MAX]
-    # See Large-Scale Discovery of Spatially Related Images. Sec 3.2 for THRESHOLD_DATAMINING_SIMILARITY_MIN
-    # See Scaleable Near Identical Image and Shot Detection. Sec 4.3 for THRESHOLD_DATAMINING_SIMILARITY_MAX
-    THRESHOLD_DATAMINING_SIMILARITY_MIN = 0.045
-    THRESHOLD_DATAMINING_SIMILARITY_MAX = 0.35
-
-    work_dir = './output'
-
-    output_similar_pair_result = 'similar_pair.pkl'
-    output_ransac_result = 'similar_pair_ransac.pkl'
-
-    image_descriptor_dict_path = 'image_descriptor_dict_oxc1_hesaff_sift_16M.pkl'
-
-    IMAGE_DIR = "./data/oxford/oxford5k/images"
+def main():
+    parser = argparse.ArgumentParser(description='MinHash Image Clustering Seed Generation')
+    parser.add_argument('--config', default="./config/mhic_seed_gen.config", help='config file path')
+    args = parser.parse_args()
+    print("use config path:", args.config)
+    config = read_config(args.config)
 
     # -------- Logic Start Here ----------------
-    if not os.path.exists(work_dir):
-        os.mkdir(work_dir)
+    if not os.path.exists(config["work_dir"]):
+        os.mkdir(config["work_dir"])
 
     # Read Bag-of-visual-words of target dataset from file.
-    with open(bow_dict_save_path, 'rb') as f:
+    with open(config["bow_dict_save_path"], 'rb') as f:
         # key: image_name, value: list of visual word index
         bow_dict = pickle.load(f)
-    if not os.path.exists(os.path.join(work_dir, output_similar_pair_result)):
+    if not os.path.exists(os.path.join(config["work_dir"], config["output_similar_pair_result"])):
         print("sweep dataset with minHash to find collisions. It will take 3 min for D=5000 images. time complexity O(D).")
-        similar_pairs = similarity_estimation(bow_dict, vocab_size)
-        pickle.dump(similar_pairs, open(os.path.join(work_dir, output_similar_pair_result), 'wb'))
+        similar_pairs = similarity_estimation(bow_dict, config["vocab_size"])
+        pickle.dump(similar_pairs, open(os.path.join(config["work_dir"], config["output_similar_pair_result"]), 'wb'))
     else:
-        similar_pairs = pickle.load(open(os.path.join(work_dir, output_similar_pair_result), 'rb'))
-        print("skip minHash sweep, because there is file: {}. We use it.".format(os.path.join(work_dir, output_similar_pair_result)))
+        similar_pairs = pickle.load(open(os.path.join(config["work_dir"], config["output_similar_pair_result"]), 'rb'))
+        print("skip minHash sweep, because there is file: {}. We use it.".format(os.path.join(config["work_dir"], config["output_similar_pair_result"])))
 
-    print_similar_paris_statistics(similar_pairs, THRESHOLD_DATAMINING_SIMILARITY_MIN, THRESHOLD_DATAMINING_SIMILARITY_MAX)
+    print_similar_paris_statistics(similar_pairs, config["THRESHOLD_DATAMINING_SIMILARITY_MIN"], config["THRESHOLD_DATAMINING_SIMILARITY_MAX"])
 
-    def initializer():
-        global image_descriptor_dict
-        with open(image_descriptor_dict_path, 'rb') as f:
-            # key: image_name, value: 2d numpy array of shape (num_descriptor, dim_descriptor)
-            image_descriptor_dict = pickle.load(f)
-    pool = Pool(num_processes, initializer)
-    rasac_result = []
-    similar_pairs = list(filter(lambda x: filter_keep_similar_only(x[1], THRESHOLD_DATAMINING_SIMILARITY_MIN, THRESHOLD_DATAMINING_SIMILARITY_MAX), similar_pairs))
-    for result in tqdm(pool.imap_unordered(parallel_task, similar_pairs), total=len(similar_pairs)):
-        if result is not None:
-            rasac_result.append(result)
+    if not os.path.exists(os.path.join(config["work_dir"], config["output_ransac_result"])):
+        def initializer():
+            global image_descriptor_dict
+            with open(config["image_descriptor_dict_path"], 'rb') as f:
+                # key: image_name, value: 2d numpy array of shape (num_descriptor, dim_descriptor)
+                image_descriptor_dict = pickle.load(f)
+        pool = Pool(config["num_processes"], initializer)
+        ransac_result = []
+        similar_pairs = list(filter(lambda x: filter_keep_similar_only(x[1], config["THRESHOLD_DATAMINING_SIMILARITY_MIN"], config["THRESHOLD_DATAMINING_SIMILARITY_MAX"]), similar_pairs))
+        for result in tqdm(pool.imap_unordered(parallel_task, similar_pairs), total=len(similar_pairs)):
+            if result is not None:
+                ransac_result.append(result)
 
-    pickle.dump(rasac_result, open(os.path.join(work_dir, output_ransac_result), 'wb'))
+        pickle.dump(ransac_result, open(os.path.join(config["work_dir"], config["output_ransac_result"]), 'wb'))
+    else:
+        ransac_result = pickle.load(open(os.path.join(config["work_dir"], config["output_ransac_result"]), 'rb'))
+        print("skip RANSAC geometric verification, because there is file: {}. We use it.".format(os.path.join(config["work_dir"], config["output_ransac_result"])))
 
-    print(rasac_result[:5])
+    print_ransac_result_statistics(ransac_result)
+
+if __name__ == "__main__":
+    main()

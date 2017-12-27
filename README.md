@@ -88,6 +88,14 @@ Generate Visual Words: Vector quantization with several methods
 
 [ ] Enable CUDA support for FLANN during FLANN compilation. 
 
+## (Optional) MinHash Image Clustering
+```
+cd .
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+python ./src/mhic_seed_generation.py
+
+```
+
 ## Search Engine
 Approximage nearest neighbor
 
