@@ -104,6 +104,7 @@ def pqkmeans_run_pqkmeans(config, data_points_pqcode, encoder):
 
 def main(config):
     if not os.path.exists(config['work_dir']):
+        print("work_dir {} not exists. create one.".format(config['work_dir']))
         os.mkdir(config['work_dir'])
     print("load features...")
     data_points = load_features(config)
