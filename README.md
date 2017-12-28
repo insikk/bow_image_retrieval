@@ -18,6 +18,9 @@ pip install scikit-image
 
 # Datasketch for minHash
 pip install datasketch -U
+
+# Config Parser
+pip install pyyaml
 ```
 
 ## Modified Datasketch for minHash

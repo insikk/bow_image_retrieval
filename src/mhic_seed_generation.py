@@ -204,14 +204,7 @@ def read_config(config_path):
 
     return config
 
-def main():
-    parser = argparse.ArgumentParser(description='MinHash Image Clustering Seed Generation')
-    parser.add_argument('--config', default="./config/mhic_seed_gen.config", help='config file path')
-    args = parser.parse_args()
-    print("use config path:", args.config)
-    config = read_config(args.config)
-
-    # -------- Logic Start Here ----------------
+def main(config):
     if not os.path.exists(config["work_dir"]):
         os.mkdir(config["work_dir"])
 
@@ -250,4 +243,9 @@ def main():
     print_ransac_result_statistics(ransac_result)
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='MinHash Image Clustering Seed Generation')
+    parser.add_argument('--config', default="./config/mhic_seed_gen.config", help='config file path')
+    args = parser.parse_args()
+    print("use config path:", args.config)
+    config = read_config(args.config)
+    main(config)

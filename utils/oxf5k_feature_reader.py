@@ -1,6 +1,6 @@
 import numpy as np
 
-def feature_reader(feature_bin_path="./data/feature/feat_oxc1_hesaff_sift.bin"):
+def feature_reader(feature_bin_path="./data/feature_all_oxford5k/feat_oxc1_hesaff_sift.bin"):
     """
     This method reads official oxf5k descriptor.
     
@@ -20,5 +20,5 @@ def feature_reader(feature_bin_path="./data/feature/feat_oxc1_hesaff_sift.bin"):
             features.append(descriptor)
             raw_binary = f.read(128)
             
-    return features
+    return np.array(features)
 
