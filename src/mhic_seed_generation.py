@@ -144,7 +144,7 @@ def show_image_pair_ransac(config, image_names):
     kp2 = get_keypoints(image_names[1])
     des2 = np.array(image_descriptor_dict[image_names[1]], dtype=np.uint8)
 
-    return draw_ransac(imgs[0], imgs[1], kp1, kp2, des1, des2, False, 'BRUTE_FORCE', None)
+    return draw_ransac(imgs[0], imgs[1], kp1, kp2, des1, des2, False, config["ransac_match_method"], config["ransac_min_samples"], config["ransac_residual_threshold"], config["ransac_max_trials"], None)
 
 
 def parallel_task(val):
@@ -153,7 +153,7 @@ def parallel_task(val):
     des1 = np.array(image_descriptor_dict[image_cluster[0]], dtype=np.uint8)
     kp2 = get_keypoints(image_cluster[1])
     des2 = np.array(image_descriptor_dict[image_cluster[1]], dtype=np.uint8)
-    num_inlier = get_ransac_inlier(kp1, kp2, des1, des2)
+    num_inlier = get_ransac_inlier(kp1, kp2, des1, des2, False, config["ransac_match_method"], ransac_config["ransac_min_samples"], ransac_config["ransac_residual_threshold"], ransac_config["ransac_max_trials"])
     return (image_cluster, score, num_inlier)
 
 def filter_keep_similar_only(score, min_th, max_th):
@@ -228,6 +228,8 @@ def main(config):
             with open(config["image_descriptor_dict_path"], 'rb') as f:
                 # key: image_name, value: 2d numpy array of shape (num_descriptor, dim_descriptor)
                 image_descriptor_dict = pickle.load(f)
+            global ransac_config
+            ransac_config = config
         pool = Pool(config["num_processes"], initializer)
         ransac_result = []
         similar_pairs = list(filter(lambda x: filter_keep_similar_only(x[1], config["THRESHOLD_DATAMINING_SIMILARITY_MIN"], config["THRESHOLD_DATAMINING_SIMILARITY_MAX"]), similar_pairs))
