@@ -32,9 +32,19 @@ def read_config(config_path):
     return config
 
 def load_features(config):
+    with open(config["image_descriptor_dict_path"], "rb") as f:
+        image_descriptor_dict = pickle.load(f)
+    descriptor_list = [] 
+    for key, val in image_descriptor_dict.items():
+        descriptor_list.append(val[1])
+       
+    # vstack  
+    all_features = np.vstack(descriptor_list)
+    print('vstacked shape:', all_features.shape)
+    
     # This is cheating. You should implement it.
-    from utils.oxf5k_feature_reader import feature_reader
-    all_features = feature_reader()
+    # from utils.oxf5k_feature_reader import feature_reader
+    # all_features = feature_reader()
 
     # # create dummy data
     # dim = 128
@@ -126,7 +136,6 @@ def main(config):
     if config["clustering_lib"] == "pqkmeans":
         print("Use PQk-means clustering")
         num_to_select = config['pqkmeans_codebook_train_size'] # Usually, people make 1M vocab in early 2010s
-        # 16000000
         selected_index = np.random.choice(data_points.shape[0], num_to_select, replace=False)
         pqcodebook_training_data = data_points[selected_index, :]
         print('shape of pqcodebook_training_data:', pqcodebook_training_data.shape)

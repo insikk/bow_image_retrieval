@@ -40,6 +40,11 @@ import numpy as np
 
 import random
 
+def convert_to_cv_keypoints(np_keypoints):
+    kp = []
+    for i in range(np_keypoints.shape[0]):
+        kp.append(cv2.KeyPoint(np_keypoints[i][0], np_keypoints[i][1], 1)) 
+    return kp
 
 def get_keypoints(image_name):
     # Oxford 5k dataset provides already converted visual words. We could use this one
@@ -139,22 +144,23 @@ def show_image_pair_ransac(config, image_names):
         img = cv2.imread(image_path)
         imgs.append(img)
 
-    kp1 = get_keypoints(image_names[0])
-    des1 = np.array(image_descriptor_dict[image_names[0]], dtype=np.uint8)
-    kp2 = get_keypoints(image_names[1])
-    des2 = np.array(image_descriptor_dict[image_names[1]], dtype=np.uint8)
+    np_keypoints, des1 = image_descriptor_dict[image_names[0]] 
+    kp1 = convert_to_cv_keypoints(np_keypoints)
+    np_keypoints, des2 = image_descriptor_dict[image_names[1]] 
+    kp2 = convert_to_cv_keypoints(np_keypoints)
 
     return draw_ransac(imgs[0], imgs[1], kp1, kp2, des1, des2, False, config["ransac_match_method"], config["ransac_min_samples"], config["ransac_residual_threshold"], config["ransac_max_trials"], None)
 
 
 def parallel_task(val):
-    image_cluster, score = val
-    kp1 = get_keypoints(image_cluster[0])
-    des1 = np.array(image_descriptor_dict[image_cluster[0]], dtype=np.uint8)
-    kp2 = get_keypoints(image_cluster[1])
-    des2 = np.array(image_descriptor_dict[image_cluster[1]], dtype=np.uint8)
-    num_inlier = get_ransac_inlier(kp1, kp2, des1, des2, False, config["ransac_match_method"], ransac_config["ransac_min_samples"], ransac_config["ransac_residual_threshold"], ransac_config["ransac_max_trials"])
-    return (image_cluster, score, num_inlier)
+    image_names, score = val
+    np_keypoints, des1 = image_descriptor_dict[image_names[0]] 
+    kp1 = convert_to_cv_keypoints(np_keypoints)
+    np_keypoints, des2 = image_descriptor_dict[image_names[1]] 
+    kp2 = convert_to_cv_keypoints(np_keypoints)
+
+    inlier = get_ransac_inlier(kp1, kp2, des1, des2, False, ransac_config["ransac_match_method"], ransac_config["ransac_min_samples"], ransac_config["ransac_residual_threshold"], ransac_config["ransac_max_trials"])
+    return (image_names, score, len(inlier))
 
 def filter_keep_similar_only(score, min_th, max_th):
     return score >= min_th and score < max_th
