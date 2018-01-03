@@ -12,9 +12,15 @@ Tested on Ubuntu 14.04
 ```
 # OpenCV Contrib
 pip install opencv-contrib-python
+           
+# Scikit for RANSAC
+pip install scikit-image
 
 # Datasketch for minHash
 pip install datasketch -U
+
+# Config Parser
+pip install pyyaml
 ```
 
 ## Modified Datasketch for minHash
@@ -26,6 +32,14 @@ pip install datasketch -U
  cd datasketch
  pip install -e .
  ```
+
+## Modified pqkmeans
+
+```
+cd pqkmeans
+git submodule update --init --recursive # get pybind 
+pip install -e .
+```
 
 ## FLANN and python binding (pyflann)
 
@@ -76,6 +90,14 @@ Generate Visual Words: Vector quantization with several methods
     * For nearest negihbor finding, we use randomized kd tree forest. We use FLANN(https://github.com/mariusmuja/flann) implementation
 
 [ ] Enable CUDA support for FLANN during FLANN compilation. 
+
+## (Optional) MinHash Image Clustering
+```
+cd .
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+python ./src/mhic_seed_generation.py
+
+```
 
 ## Search Engine
 Approximage nearest neighbor

@@ -1,3 +1,6 @@
 [submodule "datasketch"]
 	path = datasketch
 	url = https://github.com/insikk/datasketch.git
+[submodule "pqkmeans"]
+	path = pqkmeans
+	url = https://github.com/insikk/pqkmeans.git
